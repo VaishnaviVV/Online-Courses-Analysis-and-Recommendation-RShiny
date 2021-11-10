@@ -5,7 +5,9 @@ library(ggplot2)
 library(dplyr)
 library(plotly)
 
-udemy <- read.csv('/Users/narendraomprakash/Desktop/Narendra/Semester-V-FALL2021/Data Visualization/J-Component/udemy_visualisation.csv')
+udemy <- read.csv('D:/sem5/Data Visualization/DV-Project/dvproj/udemy_visualisation.csv')
+
+coursera<- read.csv('D:/sem5/Data Visualization/DV-Project/coursera_visualisation.csv')
 
 head(udemy)
 
@@ -26,7 +28,7 @@ sidebar <- dashboardSidebar(
 
 
 frow1 <- fluidRow(
-
+  
   box(
     title = "Number of Subscribers in each Subject"
     ,status = "primary"
@@ -42,11 +44,11 @@ frow1 <- fluidRow(
     ,collapsible = TRUE 
     ,plotlyOutput("subscribersBylevels", height = "300px")
   ) 
-
+  
 )
 
 frow2 <- fluidRow(
-
+  
   box(
     title = "Count of courses of each subject"
     ,status = "primary"
@@ -54,7 +56,7 @@ frow2 <- fluidRow(
     ,collapsible = TRUE
     ,plotlyOutput("CoursesEachSubj", height = "300px")
   )
-
+  
   ,box(
     title = "Prices of each levels of courses"
     ,status = "primary"
@@ -62,7 +64,7 @@ frow2 <- fluidRow(
     ,collapsible = TRUE
     ,plotlyOutput("pricesEachLevel", height = "300px")
   )
-
+  
 )
 
 frow3 <- fluidRow(
@@ -102,7 +104,7 @@ frow4 <- fluidRow(
     ,plotlyOutput("LecPriceDiff", height = "300px")
   )
   
-
+  
 )
 
 frow5 <- fluidRow(
@@ -116,7 +118,6 @@ frow5 <- fluidRow(
   )
   ,box(
     title = "Number of lectures in each subject"
-   
     ,status = "primary"
     ,solidHeader = TRUE
     ,collapsible = TRUE
@@ -124,6 +125,53 @@ frow5 <- fluidRow(
   )
   
 )
+frow6 <-fluidRow(
+  box(
+  title = "Difficulty level vs Rating"
+  ,status = "primary"
+  ,solidHeader = TRUE
+  ,collapsible = TRUE
+  ,plotlyOutput("DiffvsRating", height = "300px")
+  )
+  ,box(
+    title = "Highest Count and Difficulty level"
+    ,status = "primary"
+    ,solidHeader = TRUE
+    ,collapsible = TRUE
+    ,plotlyOutput("HighCountDiff", height = "300px")
+  )
+)
+
+frow7 <-fluidRow(
+  box(
+    title = "Highest review"
+    ,status = "primary"
+    ,solidHeader = TRUE
+    ,collapsible = TRUE
+    ,plotlyOutput("HighReview", height = "300px")
+  )
+  ,box(
+    title = "Review vs Tag"
+    ,status = "primary"
+    ,solidHeader = TRUE
+    ,collapsible = TRUE
+    ,plotlyOutput("ReviewvsTag", height = "300px")
+  )
+
+)
+
+frow8 <-fluidRow(
+  box(
+    title = "Tags vs Count"
+    ,status = "primary"
+    ,solidHeader = TRUE
+    ,collapsible = TRUE
+    ,plotlyOutput("TagsvsCount", height = "300px")
+  )
+
+  
+)
+
 
 body <- dashboardBody(
   tabItems(
@@ -132,7 +180,7 @@ body <- dashboardBody(
     ),
     
     tabItem(tabName = "cdashboard",
-            h2("DHAUHDIAOA tab content")
+            frow6,frow7,frow8
     )
   )
 )
@@ -145,7 +193,7 @@ ui <- dashboardPage(title = 'This is my Page title', header, sidebar, body, skin
 # create the server functions for the dashboard  
 server <- function(input, output) { 
   
-
+  
   
   #creating the plotOutput content
   
@@ -210,7 +258,7 @@ server <- function(input, output) {
                           yaxis = list(title = ""),
                           margin = list(b = 100),
                           barmode = 'group')
-   
+    
   })
   output$PaidFree <- renderPlotly({
     
@@ -290,6 +338,100 @@ server <- function(input, output) {
            y="Number of lectures")
     
   })
+  output$DiffvsRating <- renderPlotly({
+    
+    p1 <- plot_ly(x = coursera$Difficulty.f,
+                  y = coursera$Rating,
+                  name = "Cities",
+                  type = "bar")
+    p1
+    
+  })
+  output$HighCountDiff <- renderPlotly({
+    
+    sort<-coursera[order(coursera$Rating,decreasing = TRUE),]
+    
+    remove_none<- filter(sort,(sort$Rating %in% c('None'))==FALSE)
+    remove_none<- filter(remove_none,(remove_none$Difficulty.f %in% c('None'))==FALSE)
+    library(dplyr)
+    df1<-remove_none %>% group_by(remove_none$Rating,remove_none$Difficulty.f) %>% summarise(n = n()) %>% arrange(desc(n))
+    df1
+    
+    sort_rating<-df1[order(df1$`remove_none$Rating`,decreasing = TRUE),]
+    
+    ## scatterplot to find the highest count and difficulty level
+    
+    fig <- plot_ly(df1, x = ~df1$`remove_none$Rating`, y = ~df1$n, text = ~df1$`remove_none$Difficulty.f`, type = 'scatter', mode = 'markers', size = ~df1$n, color = ~df1$`remove_none$Rating`, colors = 'Paired',
+                   #Choosing the range of the bubbles' sizes:
+                   sizes = c(10, 50),
+                   marker = list(opacity = 0.5, sizemode = 'diameter'))
+    fig <- fig %>% layout(title = 'Difficulty Level vs Count',
+                          xaxis = list(showgrid = FALSE),
+                          yaxis = list(showgrid = FALSE),
+                          showlegend = FALSE)
+    
+    fig
+    
+  })
+  output$HighReview <- renderPlotly({
+    sort<-coursera[order(coursera$Rating,decreasing = TRUE),]
+    
+    remove_none<- filter(sort,(sort$Rating %in% c('None'))==FALSE)
+    remove_none<- filter(remove_none,(remove_none$Difficulty.f %in% c('None'))==FALSE)
+    library(dplyr)
+    df1<-remove_none %>% group_by(remove_none$Rating,remove_none$Difficulty.f) %>% summarise(n = n()) %>% arrange(desc(n))
+    df1
+    
+    sort_rating<-df1[order(df1$`remove_none$Rating`,decreasing = TRUE),]
+    
+    plot_ly(sort_rating, x = ~sort_rating$`remove_none$Rating`, y = ~n, type = 'bar', 
+            name = ~sort_rating$`remove_none$Difficulty.f`, color = ~sort_rating$`remove_none$Difficulty.f`) %>%
+      layout(yaxis = list(title = 'Count'), barmode = 'stack')
+    
+    
+  })
+  
+  output$ReviewvsTag <- renderPlotly({
+    sort<-coursera[order(coursera$Rating,decreasing = TRUE),]
+    
+    remove_none<- filter(sort,(sort$Rating %in% c('None'))==FALSE)
+    remove_none<- filter(remove_none,(remove_none$Difficulty.f %in% c('None'))==FALSE)
+    library(dplyr)
+    df1<-remove_none %>% group_by(remove_none$Rating,remove_none$Difficulty.f) %>% summarise(n = n()) %>% arrange(desc(n))
+    df1
+    df3<-remove_none
+    df4<-df3 %>% group_by(df3$Rating,df3$Tags,df3$Difficulty.f) %>% summarise(n = n()) %>% arrange(desc(n))
+    df4
+    df5<-head(df4,100)
+    fig <- plot_ly(df5, labels = ~df5$`df3$Tags`, values = ~df5$n, type = 'pie')
+    fig <- fig %>% layout(title = 'United States Personal Expenditures by Categories in 1960',
+                          xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+                          yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+    
+    fig
+    
+  })
+  
+  output$TagsvsCount <- renderPlotly({
+    sort<-coursera[order(coursera$Rating,decreasing = TRUE),]
+    
+    remove_none<- filter(sort,(sort$Rating %in% c('None'))==FALSE)
+    remove_none<- filter(remove_none,(remove_none$Difficulty.f %in% c('None'))==FALSE)
+    library(dplyr)
+    df1<-remove_none %>% group_by(remove_none$Rating,remove_none$Difficulty.f) %>% summarise(n = n()) %>% arrange(desc(n))
+    df1
+    df3<-remove_none
+    df4<-df3 %>% group_by(df3$Rating,df3$Tags,df3$Difficulty.f) %>% summarise(n = n()) %>% arrange(desc(n))
+    df4
+    df5<-head(df4,100)
+    
+    plot_ly(df4, x = ~df4$`df3$Tags`, y = ~n, type = 'bar', 
+            name = ~df4$`df3$Difficulty.f`, color = ~df4$`df3$Difficulty.f`) %>%
+      layout(yaxis = list(title = 'Count'), barmode = 'stack')
+    
+    
+  })
+  
 }
 
 
