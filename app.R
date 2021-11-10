@@ -17,12 +17,12 @@ header <- dashboardHeader(title = "Analysis Dashboard")
 #Sidebar content of the dashboard
 sidebar <- dashboardSidebar(
   sidebarMenu(
-    menuItem("Dashboard", tabName = "dashboard", icon = icon("dashboard")),
-    menuItem("Visit-us", icon = icon("send",lib='glyphicon'), 
+    menuItem("Udemy", tabName = "dashboard", icon = icon("dashboard")),
+    menuItem("Coursera", tabName = "Cdashboard", icon = icon("dashboard")),
+    menuItem("Visit-us", icon = icon("send",lib='glyphicon'),
              href = "https://www.salesforce.com")
   )
 )
-
 
 
 frow1 <- fluidRow(
@@ -42,7 +42,7 @@ frow1 <- fluidRow(
     ,collapsible = TRUE 
     ,plotlyOutput("subscribersBylevels", height = "300px")
   ) 
-  
+
 )
 
 frow2 <- fluidRow(
@@ -75,14 +75,60 @@ frow3 <- fluidRow(
     ,plotlyOutput("SubsandReviewsBylevel", height = "300px")
   )
   
- 
+  ,box(
+    title = "Number of subscribers and reviews for each subject"
+    ,status = "primary"
+    ,solidHeader = TRUE
+    ,collapsible = TRUE
+    ,plotlyOutput("SubsandReviewsBySubj", height = "300px")
+  )
+  
+)
+
+frow4 <- fluidRow(
+  
+  box(
+    title = "Different Paid/Free Courses within a difficulty level"
+    ,status = "primary"
+    ,solidHeader = TRUE
+    ,collapsible = TRUE
+    ,plotlyOutput("PaidFree", height = "300px")
+  )
+  ,box(
+    title = "Number of lectures and price of course based on difficulty levels"
+    ,status = "primary"
+    ,solidHeader = TRUE
+    ,collapsible = TRUE
+    ,plotlyOutput("LecPriceDiff", height = "300px")
+  )
+  
+
+)
+
+frow5 <- fluidRow(
+  
+  box(
+    title = "Paid vs Unpaid courses"
+    ,status = "primary"
+    ,solidHeader = TRUE
+    ,collapsible = TRUE
+    ,plotlyOutput("PaidUnpaid", height = "300px")
+  )
+  ,box(
+    title = "Number of lectures in each subject"
+   
+    ,status = "primary"
+    ,solidHeader = TRUE
+    ,collapsible = TRUE
+    ,plotlyOutput("LecEachSubj", height = "300px")
+  )
   
 )
 
 
 
 # combine the two fluid rows to make the body
-body <- dashboardBody(frow1,frow2,frow3)
+body <- dashboardBody(frow1,frow2,frow3,frow4,frow5)
 
 #completing the ui part with dashboardPage
 ui <- dashboardPage(title = 'This is my Page title', header, sidebar, body, skin='red')
@@ -136,8 +182,9 @@ server <- function(input, output) {
     
   })
   output$SubsandReviewsBylevel <- renderPlotly({
+    
     fig <- plot_ly(udemy, x = ~udemy$level.f, y = ~udemy$num_subscribers, type = 'bar', name = 'Num of Subscribers', marker = list(color = 'rgb(49,130,189)'))
-    fig <- fig %>% add_trace(y = ~udemy$num_reviews, name = 'Number of reviews', marker = list(color = 'rgb(204,204,204)'))
+    fig <- fig %>% add_trace(y = ~udemy$num_reviews, name = 'Number of reviews', marker = list(color ='rgb(204,204,204)'))
     fig <- fig %>% layout(xaxis = list(title = "", tickangle = -45),
                           yaxis = list(title = ""),
                           margin = list(b = 100),
@@ -146,7 +193,94 @@ server <- function(input, output) {
     fig
     
   })
+  output$SubsandReviewsBySubj <- renderPlotly({
+    
+    fig <- plot_ly(udemy, x = ~udemy$subject.f, y = ~udemy$num_subscribers, type = 'bar', name = 'Num of Subscribers', marker = list(color = 'rgb(49,130,189)'))
+    fig <- fig %>% add_trace(y = ~udemy$num_reviews, name = 'Number of reviews', marker = list(color = 'rgb(204,204,204)'))
+    fig <- fig %>% layout(xaxis = list(title = "", tickangle = -45),
+                          yaxis = list(title = ""),
+                          margin = list(b = 100),
+                          barmode = 'group')
+   
+  })
+  output$PaidFree <- renderPlotly({
+    
+    all_levels_paid<-filter(udemy,level.f=="All Levels" & is_paid.f=="True")
+    all_levels_free<-filter(udemy,level.f=="All Levels" & is_paid.f=="False")
+    intermediate_levels_paid<-filter(udemy,level.f=="Intermediate Level" & is_paid.f=="True")
+    intermediate_levels_free<-filter(udemy,level.f=="Intermediate Level" & is_paid.f=="False")
+    beginner_levels_paid<-filter(udemy,level.f=="Beginner Level" & is_paid.f=="True")
+    beginner_levels_free<-filter(udemy,level.f=="Beginner Level" & is_paid.f=="False")
+    expert_levels_paid<-filter(udemy,level.f=="Expert Level" & is_paid.f=="True")
+    expert_levels_free<-filter(udemy,level.f=="Expert Level" & is_paid.f=="False")
+    
+    
+    dlevels<-c("All Levels","Expert Level","Intermediate Level","Beginner Level")
+    paid<-c(1807,58,391,1112)
+    free<-c(122,0,30,158)
+    fig <- plot_ly(udemy, x = ~dlevels, y = ~paid, type = 'bar', name = 'Paid')
+    fig <- fig %>% add_trace(y = ~free, name = 'Free')
+    fig <- fig %>% layout(title='Different Paid/Free Courses within a difficulty level',yaxis = list(title = 'Count'), barmode = 'stack')
+    
+    fig
+    
+  })
   
+  output$LecPriceDiff <- renderPlotly({
+    
+    all_levels_paid<-filter(udemy,level.f=="All Levels" & is_paid.f=="True")
+    all_levels_free<-filter(udemy,level.f=="All Levels" & is_paid.f=="False")
+    intermediate_levels_paid<-filter(udemy,level.f=="Intermediate Level" & is_paid.f=="True")
+    intermediate_levels_free<-filter(udemy,level.f=="Intermediate Level" & is_paid.f=="False")
+    beginner_levels_paid<-filter(udemy,level.f=="Beginner Level" & is_paid.f=="True")
+    beginner_levels_free<-filter(udemy,level.f=="Beginner Level" & is_paid.f=="False")
+    expert_levels_paid<-filter(udemy,level.f=="Expert Level" & is_paid.f=="True")
+    expert_levels_free<-filter(udemy,level.f=="Expert Level" & is_paid.f=="False")
+    
+    
+    dlevels<-c("All Levels","Expert Level","Intermediate Level","Beginner Level")
+    paid<-c(1807,58,391,1112)
+    free<-c(122,0,30,158)
+    udemy1 <- udemy[order(udemy$num_reviews), ]
+    
+    fig <- plot_ly(udemy1, x = ~num_lectures, y = ~level.f, name = "No. of lectures", type = 'scatter',
+                   mode = "markers", marker = list(color = "pink"))
+    fig <- fig %>% add_trace(x = ~price, y = ~level.f, name = "Price",type = 'scatter',
+                             mode = "markers", marker = list(color = "blue"))
+    fig <- fig %>% layout(
+      title = "Number of lectures and price of course based on difficulty levels",
+      xaxis = list(title = "Number of lectures/Price"),
+      yaxis= list(title="Difficulty Level"),
+      margin = list(l = 1)
+    )
+    
+    fig
+    
+  })
+  
+  output$PaidUnpaid <- renderPlotly({
+    
+    s1<-count(udemy,'is_paid.f')
+    fig <- plot_ly(udemy, labels = ~udemy$is_paid.f, values =s1, type = 'pie')
+    fig <- fig %>% layout(title = 'Paid Courses VS Unpaid Courses',
+                          xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+                          yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+    
+    fig
+    
+  })
+  
+  output$LecEachSubj <- renderPlotly({
+    
+    # Violin Plot (plot-3)
+    g <- ggplot(udemy, aes(subject.f,num_lectures,fill=subject.f))
+    g + geom_violin() + 
+      labs(title="Violin plot", 
+           subtitle="Subject vs Number of lectures",
+           x="Subject",
+           y="Number of lectures")
+    
+  })
 }
 
 
