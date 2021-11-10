@@ -5,7 +5,7 @@ library(ggplot2)
 library(dplyr)
 library(plotly)
 
-udemy <- read.csv('D:/sem5/Data Visualization/DV-Project/dvproj/udemy_visualisation.csv')
+udemy <- read.csv('/Users/narendraomprakash/Desktop/Narendra/Semester-V-FALL2021/Data Visualization/J-Component/udemy_visualisation.csv')
 
 head(udemy)
 
@@ -18,7 +18,7 @@ header <- dashboardHeader(title = "Analysis Dashboard")
 sidebar <- dashboardSidebar(
   sidebarMenu(
     menuItem("Udemy", tabName = "dashboard", icon = icon("dashboard")),
-    menuItem("Coursera", tabName = "Cdashboard", icon = icon("dashboard")),
+    menuItem("Coursera", tabName = "cdashboard", icon = icon("dashboard")),
     menuItem("Visit-us", icon = icon("send",lib='glyphicon'),
              href = "https://www.salesforce.com")
   )
@@ -125,10 +125,19 @@ frow5 <- fluidRow(
   
 )
 
-
+body <- dashboardBody(
+  tabItems(
+    tabItem(tabName = "dashboard",
+            frow1,frow2,frow3,frow4,frow5
+    ),
+    
+    tabItem(tabName = "cdashboard",
+            h2("DHAUHDIAOA tab content")
+    )
+  )
+)
 
 # combine the two fluid rows to make the body
-body <- dashboardBody(frow1,frow2,frow3,frow4,frow5)
 
 #completing the ui part with dashboardPage
 ui <- dashboardPage(title = 'This is my Page title', header, sidebar, body, skin='red')
