@@ -5,9 +5,82 @@ library(ggplot2)
 library(dplyr)
 library(plotly)
 
-udemy <- read.csv('D:/sem5/Data Visualization/DV-Project/dvproj/udemy_visualisation.csv')
+library(stringr) #Remove special characters
+library(tm) #vector source, stopwords etc.
+library(superml) #for CV
+library(Matrix) # for dense matrices
+library(lsa) #for Cosine Simlarity
+library(itertools)
+library(tidytext)
+# library(dplyr)
 
-coursera<- read.csv('D:/sem5/Data Visualization/DV-Project/coursera_visualisation.csv')
+udemy <- read.csv('/Users/narendraomprakash/Desktop/Narendra/Semester-V-FALL2021/Data Visualization/J-Component/udemy_visualisation.csv')
+
+coursera<- read.csv('/Users/narendraomprakash/Desktop/Narendra/Semester-V-FALL2021/Data Visualization/J-Component/coursera_visualisation.csv')
+
+# udemy recommendation dataset
+recommendation_udemy<-read.csv("/Users/narendraomprakash/Desktop/Narendra/Semester-V-FALL2021/Data Visualization/J-Component/udemy_recommendation.csv")
+
+
+# For suggestions based on title
+recommendation_udemy_title <- recommendation_udemy %>% 
+  mutate(course_title=gsub("(http|https).+$|\\n|&amp|[[:punct:]]","",course_title),
+         rowIndex=as.numeric(row.names(.))) %>% select(rowIndex,course_title)
+recommendation_udemy_title_docList<-as.list(recommendation_udemy_title$course_title)
+recommendation_udemy_title_docList.length<-length(recommendation_udemy_title_docList)
+
+# Recommender function based on title
+recommender<-function(query,retrievingdf,y,y.length){
+  
+  # Storing docs in corpus class-basic DS in text mining
+  recommendation.docs<-VectorSource(c(y,query))
+  
+  # Transform/standardize docs for analysis
+  recommendation.corpus<-VCorpus(recommendation.docs) %>% 
+    tm_map(stemDocument) %>%
+    tm_map(removeNumbers) %>% 
+    tm_map(content_transformer(tolower)) %>% 
+    tm_map(removeWords,stopwords("en")) %>%
+    tm_map(stripWhitespace)
+  
+  #TF-IDF Matrix
+  tf.idf.matrix<-TermDocumentMatrix(recommendation.corpus,control=list(weighting=function(x) weightSMART(x,spec="ltc"),
+                                                                       wordLengths=c(1,Inf)))
+  
+  #TF-IDF->Data.Frame
+  tf.idf.matrix.df<-tidy(tf.idf.matrix) %>% 
+    group_by(document) %>% 
+    mutate(vtrLen=sqrt(sum(count^2))) %>% 
+    mutate(count=count/vtrLen) %>% 
+    ungroup() %>% 
+    select(term:count)
+  
+  docMatrix<-tf.idf.matrix.df%>%mutate(document=as.numeric(document)) %>% 
+    filter(document<y.length+1)
+  
+  
+  qryMatrix <-tf.idf.matrix.df%>% 
+    mutate(document=as.numeric(document))%>% 
+    filter(document>=y.length+1)
+  
+  # Top 10 recommendations
+  recommendations<-docMatrix %>% 
+    inner_join(qryMatrix,by=c("term"="term"),
+               suffix=c(".doc",".query")) %>% 
+    mutate(termScore=round(count.doc*count.query,4))%>% 
+    group_by(document.query,document.doc) %>% 
+    summarise(Score=sum(termScore)) %>% 
+    filter(row_number(desc(Score))<=10) %>% 
+    arrange(desc(Score)) %>% 
+    left_join(retrievingdf,by=c("document.doc"="rowIndex")) %>% 
+    ungroup() %>% 
+    rename(Result=course_title) %>% 
+    select(Result,Score) %>% 
+    data.frame()
+  
+  return(recommendations)
+  
+}
 
 head(udemy)
 
@@ -21,6 +94,7 @@ sidebar <- dashboardSidebar(
   sidebarMenu(
     menuItem("Udemy", tabName = "dashboard", icon = icon("dashboard")),
     menuItem("Coursera", tabName = "cdashboard", icon = icon("dashboard")),
+    menuItem("Udemy Recommender",tabName="uRecommender",icon=icon("dashboard")),
     menuItem("Visit-us", icon = icon("send",lib='glyphicon'),
              href = "https://www.salesforce.com")
   )
@@ -172,6 +246,27 @@ frow8 <-fluidRow(
   
 )
 
+frow9 <- fluidRow(
+  
+  box(
+    title = "Udemy Recommender based on Title"
+    ,status = "danger"
+    ,solidHeader = TRUE
+    ,collapsible = TRUE
+    ,textInput("courseTitle",label="Enter course title")
+    ,submitButton("Submit", icon("refresh"))
+  ),
+  
+  tableOutput("uRecommendationTable")
+  
+
+  
+)
+
+
+
+
+
 
 body <- dashboardBody(
   tabItems(
@@ -181,6 +276,9 @@ body <- dashboardBody(
     
     tabItem(tabName = "cdashboard",
             frow6,frow7,frow8
+    ),
+    tabItem(tabName = "uRecommender",
+            frow9
     )
   )
 )
@@ -432,6 +530,10 @@ server <- function(input, output) {
     
   })
   
+
+  output$uRecommendationTable<-renderTable(recommender(input$courseTitle,recommendation_udemy_title,recommendation_udemy_title_docList,recommendation_udemy_title_docList.length)
+)
+
 }
 
 
