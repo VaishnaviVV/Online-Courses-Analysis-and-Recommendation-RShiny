@@ -21,6 +21,7 @@ coursera<- read.csv('/Users/narendraomprakash/Desktop/Narendra/Semester-V-FALL20
 # udemy recommendation dataset
 recommendation_udemy<-read.csv("/Users/narendraomprakash/Desktop/Narendra/Semester-V-FALL2021/Data Visualization/J-Component/udemy_recommendation.csv")
 
+recommendation_coursera<-read.csv("/Users/narendraomprakash/Desktop/Narendra/Semester-V-FALL2021/Data Visualization/J-Component/coursera_recommendation.csv")
 
 # For suggestions based on title
 recommendation_udemy_title <- recommendation_udemy %>% 
@@ -29,57 +30,65 @@ recommendation_udemy_title <- recommendation_udemy %>%
 recommendation_udemy_title_docList<-as.list(recommendation_udemy_title$course_title)
 recommendation_udemy_title_docList.length<-length(recommendation_udemy_title_docList)
 
-# Recommender function based on title
-recommender<-function(query,retrievingdf,y,y.length){
-  
+# For suggestions based on title
+recommendation_coursera_title <- recommendation_coursera %>% 
+  mutate(course_title=gsub("(http|https).+$|\\n|&amp|[[:punct:]]","",Name),
+         rowIndex=as.numeric(row.names(.))) %>% select(rowIndex,course_title)
+recommendation_coursera_title_docList<-as.list(recommendation_coursera_title$course_title)
+recommendation_coursera_title_docList.length<-length(recommendation_coursera_title_docList)
+
+
+#Recommender function based on title
+recommender_title<-function(query,retrievingdf,y,y.length){
+
   # Storing docs in corpus class-basic DS in text mining
   recommendation.docs<-VectorSource(c(y,query))
-  
+
   # Transform/standardize docs for analysis
-  recommendation.corpus<-VCorpus(recommendation.docs) %>% 
+  recommendation.corpus<-VCorpus(recommendation.docs) %>%
     tm_map(stemDocument) %>%
-    tm_map(removeNumbers) %>% 
-    tm_map(content_transformer(tolower)) %>% 
+    tm_map(removeNumbers) %>%
+    tm_map(content_transformer(tolower)) %>%
     tm_map(removeWords,stopwords("en")) %>%
     tm_map(stripWhitespace)
-  
+
   #TF-IDF Matrix
   tf.idf.matrix<-TermDocumentMatrix(recommendation.corpus,control=list(weighting=function(x) weightSMART(x,spec="ltc"),
                                                                        wordLengths=c(1,Inf)))
-  
+
   #TF-IDF->Data.Frame
-  tf.idf.matrix.df<-tidy(tf.idf.matrix) %>% 
-    group_by(document) %>% 
-    mutate(vtrLen=sqrt(sum(count^2))) %>% 
-    mutate(count=count/vtrLen) %>% 
-    ungroup() %>% 
+  tf.idf.matrix.df<-tidy(tf.idf.matrix) %>%
+    group_by(document) %>%
+    mutate(vtrLen=sqrt(sum(count^2))) %>%
+    mutate(count=count/vtrLen) %>%
+    ungroup() %>%
     select(term:count)
-  
-  docMatrix<-tf.idf.matrix.df%>%mutate(document=as.numeric(document)) %>% 
+
+  docMatrix<-tf.idf.matrix.df%>%mutate(document=as.numeric(document)) %>%
     filter(document<y.length+1)
-  
-  
-  qryMatrix <-tf.idf.matrix.df%>% 
-    mutate(document=as.numeric(document))%>% 
+
+
+  qryMatrix <-tf.idf.matrix.df%>%
+    mutate(document=as.numeric(document))%>%
     filter(document>=y.length+1)
-  
+
   # Top 10 recommendations
-  recommendations<-docMatrix %>% 
+  recommendations<-docMatrix %>%
     inner_join(qryMatrix,by=c("term"="term"),
-               suffix=c(".doc",".query")) %>% 
-    mutate(termScore=round(count.doc*count.query,4))%>% 
-    group_by(document.query,document.doc) %>% 
-    summarise(Score=sum(termScore)) %>% 
-    filter(row_number(desc(Score))<=10) %>% 
-    arrange(desc(Score)) %>% 
-    left_join(retrievingdf,by=c("document.doc"="rowIndex")) %>% 
-    ungroup() %>% 
-    rename(Result=course_title) %>% 
-    select(Result,Score) %>% 
+               suffix=c(".doc",".query")) %>%
+    mutate(termScore=round(count.doc*count.query,4))%>%
+    group_by(document.query,document.doc) %>%
+    summarise(Score=sum(termScore)) %>%
+    filter(row_number(desc(Score))<=10) %>%
+    arrange(desc(Score)) %>%
+    left_join(retrievingdf,by=c("document.doc"="rowIndex")) %>%
+    ungroup() %>%
+    rename(Result=course_title) %>%
+    select(Result,Score) %>%
     data.frame()
-  
+
   return(recommendations)
-  
+
 }
 
 head(udemy)
@@ -93,8 +102,9 @@ header <- dashboardHeader(title = "Analysis Dashboard")
 sidebar <- dashboardSidebar(
   sidebarMenu(
     menuItem("Udemy", tabName = "dashboard", icon = icon("dashboard")),
-    menuItem("Coursera", tabName = "cdashboard", icon = icon("dashboard")),
+    menuItem("Coursera", tabName = "cdashboard",icon=icon("dashboard")),
     menuItem("Udemy Recommender",tabName="uRecommender",icon=icon("dashboard")),
+    menuItem("Coursera Recommender",tabName="cRecommender",icon=icon("dashboard")),
     menuItem("Visit-us", icon = icon("send",lib='glyphicon'),
              href = "https://www.salesforce.com")
   )
@@ -201,11 +211,11 @@ frow5 <- fluidRow(
 )
 frow6 <-fluidRow(
   box(
-  title = "Difficulty level vs Rating"
-  ,status = "primary"
-  ,solidHeader = TRUE
-  ,collapsible = TRUE
-  ,plotlyOutput("DiffvsRating", height = "300px")
+    title = "Difficulty level vs Count"
+    ,status = "primary"
+    ,solidHeader = TRUE
+    ,collapsible = TRUE
+    ,plotlyOutput("DiffvsCount", height = "300px")
   )
   ,box(
     title = "Highest Count and Difficulty level"
@@ -218,7 +228,7 @@ frow6 <-fluidRow(
 
 frow7 <-fluidRow(
   box(
-    title = "Highest review"
+    title = "Highest Rating"
     ,status = "primary"
     ,solidHeader = TRUE
     ,collapsible = TRUE
@@ -241,6 +251,12 @@ frow8 <-fluidRow(
     ,solidHeader = TRUE
     ,collapsible = TRUE
     ,plotlyOutput("TagsvsCount", height = "300px")
+  ),box(
+    title = "Difficulty level vs Rating"
+    ,status = "primary"
+    ,solidHeader = TRUE
+    ,collapsible = TRUE
+    ,plotlyOutput("DiffvsRating", height = "300px")
   )
 
   
@@ -250,16 +266,36 @@ frow9 <- fluidRow(
   
   box(
     title = "Udemy Recommender based on Title"
-    ,status = "danger"
+    ,status = "primary"
     ,solidHeader = TRUE
     ,collapsible = TRUE
-    ,textInput("courseTitle",label="Enter course title")
+    # ,selectInput("filterVariable", "Filter:",
+    #             c("Course Title" = "courseTitle",
+    #               "Reviews" = "courseReviews"))
+    # ,uiOutput('dynamic')
+    ,textInput("udemyCourseTitle",label="Enter course title")
     ,submitButton("Submit", icon("refresh"))
   ),
-  
   tableOutput("uRecommendationTable")
-  
 
+)
+
+
+frow10 <- fluidRow(
+  
+  box(
+    title = "Coursera Recommender based on Title"
+    ,status = "primary"
+    ,solidHeader = TRUE
+    ,collapsible = TRUE
+    # ,selectInput("filterVariable", "Filter:",
+    #             c("Course Title" = "courseTitle",
+    #               "Reviews" = "courseReviews"))
+    # ,uiOutput('dynamic')
+    ,textInput("courseraCourseTitle",label="Enter course title")
+    ,submitButton("Submit", icon("refresh"))
+  ),
+  tableOutput("cRecommendationTable")
   
 )
 
@@ -279,6 +315,9 @@ body <- dashboardBody(
     ),
     tabItem(tabName = "uRecommender",
             frow9
+    ),
+    tabItem(tabName = "cRecommender",
+            frow10
     )
   )
 )
@@ -286,7 +325,7 @@ body <- dashboardBody(
 # combine the two fluid rows to make the body
 
 #completing the ui part with dashboardPage
-ui <- dashboardPage(title = 'This is my Page title', header, sidebar, body, skin='red')
+ui <- dashboardPage(title = 'This is my Page title', header, sidebar, body, skin='purple')
 
 # create the server functions for the dashboard  
 server <- function(input, output) { 
@@ -436,13 +475,21 @@ server <- function(input, output) {
            y="Number of lectures")
     
   })
-  output$DiffvsRating <- renderPlotly({
-    
-    p1 <- plot_ly(x = coursera$Difficulty.f,
-                  y = coursera$Rating,
-                  name = "Cities",
-                  type = "bar")
-    p1
+  # output$DiffvsRating <- renderPlotly({
+  #   
+  #   p1 <- plot_ly(x = coursera$Difficulty.f,
+  #                 y = coursera$Rating,
+  #                 name = "Cities",
+  #                 type = "bar")
+  #   p1
+  #   
+  # })
+  #coursera plots
+  output$DiffvsCount <- renderPlotly({
+    fig <- plot_ly()
+    fig <- fig %>% add_pie(data = count(coursera, Difficulty.f), labels = ~Difficulty.f, values = ~n,
+                           name = "Difficulty.f")
+    fig
     
   })
   output$HighCountDiff <- renderPlotly({
@@ -451,7 +498,6 @@ server <- function(input, output) {
     
     remove_none<- filter(sort,(sort$Rating %in% c('None'))==FALSE)
     remove_none<- filter(remove_none,(remove_none$Difficulty.f %in% c('None'))==FALSE)
-    library(dplyr)
     df1<-remove_none %>% group_by(remove_none$Rating,remove_none$Difficulty.f) %>% summarise(n = n()) %>% arrange(desc(n))
     df1
     
@@ -464,8 +510,8 @@ server <- function(input, output) {
                    sizes = c(10, 50),
                    marker = list(opacity = 0.5, sizemode = 'diameter'))
     fig <- fig %>% layout(title = 'Difficulty Level vs Count',
-                          xaxis = list(showgrid = FALSE),
-                          yaxis = list(showgrid = FALSE),
+                          xaxis = list(title='Rating'),
+                          yaxis = list(title='count'),
                           showlegend = FALSE)
     
     fig
@@ -476,7 +522,6 @@ server <- function(input, output) {
     
     remove_none<- filter(sort,(sort$Rating %in% c('None'))==FALSE)
     remove_none<- filter(remove_none,(remove_none$Difficulty.f %in% c('None'))==FALSE)
-    library(dplyr)
     df1<-remove_none %>% group_by(remove_none$Rating,remove_none$Difficulty.f) %>% summarise(n = n()) %>% arrange(desc(n))
     df1
     
@@ -484,7 +529,7 @@ server <- function(input, output) {
     
     plot_ly(sort_rating, x = ~sort_rating$`remove_none$Rating`, y = ~n, type = 'bar', 
             name = ~sort_rating$`remove_none$Difficulty.f`, color = ~sort_rating$`remove_none$Difficulty.f`) %>%
-      layout(yaxis = list(title = 'Count'), barmode = 'stack')
+      layout(yaxis = list(title = 'Count'), barmode = 'stack', xaxis = list(title = 'Rating'))
     
     
   })
@@ -494,7 +539,6 @@ server <- function(input, output) {
     
     remove_none<- filter(sort,(sort$Rating %in% c('None'))==FALSE)
     remove_none<- filter(remove_none,(remove_none$Difficulty.f %in% c('None'))==FALSE)
-    library(dplyr)
     df1<-remove_none %>% group_by(remove_none$Rating,remove_none$Difficulty.f) %>% summarise(n = n()) %>% arrange(desc(n))
     df1
     df3<-remove_none
@@ -502,9 +546,9 @@ server <- function(input, output) {
     df4
     df5<-head(df4,100)
     fig <- plot_ly(df5, labels = ~df5$`df3$Tags`, values = ~df5$n, type = 'pie')
-    fig <- fig %>% layout(title = 'United States Personal Expenditures by Categories in 1960',
-                          xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
-                          yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+    fig <- fig %>% layout(
+      xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+      yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
     
     fig
     
@@ -515,7 +559,6 @@ server <- function(input, output) {
     
     remove_none<- filter(sort,(sort$Rating %in% c('None'))==FALSE)
     remove_none<- filter(remove_none,(remove_none$Difficulty.f %in% c('None'))==FALSE)
-    library(dplyr)
     df1<-remove_none %>% group_by(remove_none$Rating,remove_none$Difficulty.f) %>% summarise(n = n()) %>% arrange(desc(n))
     df1
     df3<-remove_none
@@ -525,14 +568,46 @@ server <- function(input, output) {
     
     plot_ly(df4, x = ~df4$`df3$Tags`, y = ~n, type = 'bar', 
             name = ~df4$`df3$Difficulty.f`, color = ~df4$`df3$Difficulty.f`) %>%
-      layout(yaxis = list(title = 'Count'), barmode = 'stack')
+      layout(yaxis = list(title = 'Count'), xaxis = list(title = 'Tags'), barmode = 'stack')
     
     
   })
+  output$DiffvsRating <- renderPlotly({
+    df5<-coursera %>% group_by(coursera$Difficulty.f,coursera$Rating) %>% summarise(n = n()) %>% arrange(desc(n))
+    df5 %>%
+      plot_ly(
+        x = ~n
+        ,y = ~df5$`coursera$Difficulty.f`
+        ,color = ~df5$`coursera$Rating`
+        ,name = ~df5$`coursera$Rating`
+        ,type = "bar"
+        ,orientation = "h"
+      ) %>%
+      layout(
+        barmode = "stack"
+      )%>%
+      layout(title = 'Difficulty Level Vs Rating', plot_bgcolor = "#e5ecf6", xaxis = list(title = 'count'), 
+             yaxis = list(title = 'Difficulty Level'))
+    
+    
+  })
+  # output$dynamic <- renderUI({
+  #   tags<-tagList()
+  #   if(input$filterVariable=="courseTitle"){
+  #   tags[[1]]<-textInput("filter",label="Enter course title")
+  #   }else if(input$filterVariable=="courseReviews"){
+  #     tags[[1]]<-numericInput("filter",label="Enter course reviews",value=9)
+  #   }
+  #   tags[[2]]<-submitButton("Submit", icon("submit"))
+  #   tags
+  # }
   
+# )
+  output$uRecommendationTable<-renderTable(recommender_title(input$udemyCourseTitle,recommendation_udemy_title,recommendation_udemy_title_docList,recommendation_udemy_title_docList.length))
 
-  output$uRecommendationTable<-renderTable(recommender(input$courseTitle,recommendation_udemy_title,recommendation_udemy_title_docList,recommendation_udemy_title_docList.length)
-)
+  output$cRecommendationTable<-renderTable(recommender_title(input$courseraCourseTitle,recommendation_coursera_title,recommendation_coursera_title_docList,recommendation_coursera_title_docList.length))
+                                                                                    
+                                           
 
 }
 
