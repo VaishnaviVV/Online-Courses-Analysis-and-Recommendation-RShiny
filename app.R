@@ -12,7 +12,9 @@ library(Matrix) # for dense matrices
 library(lsa) #for Cosine Simlarity
 library(itertools)
 library(tidytext)
+library(wordcloud2)
 # library(dplyr)
+figPath = system.file("/Users/narendraomprakash/Downloads/png-clipart-united-states-coursera-massive-open-online-course-education-united-states-blue-text1637609115.mask",package = "wordcloud2")
 
 udemy <- read.csv('/Users/narendraomprakash/Desktop/Narendra/Semester-V-FALL2021/Data Visualization/J-Component/udemy_visualisation.csv')
 
@@ -93,6 +95,52 @@ recommender_title<-function(query,retrievingdf,y,y.length){
 
 head(udemy)
 
+library(readr)
+library(dplyr)
+library(e1071)
+library(mlbench)
+
+#Text mining packages
+library(tm)
+library(SnowballC)
+library("wordcloud")
+library("RColorBrewer")
+
+#loading the data
+
+
+corpus = Corpus(VectorSource(coursera$Name))
+# Look at corpus
+
+
+corpus = tm_map(corpus, PlainTextDocument)
+corpus = tm_map(corpus, tolower)
+#Removing Punctuation
+corpus = tm_map(corpus, removePunctuation)
+
+#Remove stopwords
+corpus = tm_map(corpus, removeWords, c("cloth", stopwords("english")))
+
+# Stemming
+corpus = tm_map(corpus, stemDocument)
+
+# Eliminate white spaces
+corpus = tm_map(corpus, stripWhitespace)
+# corpus[[1]][1] 
+
+DTM <- TermDocumentMatrix(corpus)
+mat <- as.matrix(DTM)
+f <- sort(rowSums(mat),decreasing=TRUE)
+wordcloud.df <- data.frame(word = names(f),freq=as.numeric(f))
+# head(dat, 30)
+
+
+set.seed(50)
+# wordcloud(words = wordcloud.df$word, freq = wordcloud.df$freq, random.order=TRUE)
+
+
+
+
 #Dashboard header carrying the title of the dashboard
 header <- dashboardHeader(title = "Analysis Dashboard")  
 
@@ -104,9 +152,7 @@ sidebar <- dashboardSidebar(
     menuItem("Udemy", tabName = "dashboard", icon = icon("dashboard")),
     menuItem("Coursera", tabName = "cdashboard",icon=icon("dashboard")),
     menuItem("Udemy Recommender",tabName="uRecommender",icon=icon("dashboard")),
-    menuItem("Coursera Recommender",tabName="cRecommender",icon=icon("dashboard")),
-    menuItem("Visit-us", icon = icon("send",lib='glyphicon'),
-             href = "https://www.salesforce.com")
+    menuItem("Coursera Recommender",tabName="cRecommender",icon=icon("dashboard"))
   )
 )
 
@@ -216,9 +262,9 @@ frow6 <-fluidRow(
     ,solidHeader = TRUE
     ,collapsible = TRUE
     ,plotlyOutput("DiffvsCount", height = "300px")
-  )
-  ,box(
-    title = "Highest Count and Difficulty level"
+  ),
+  box(
+    title = "Most frequently provided rating for a particultar tag"
     ,status = "primary"
     ,solidHeader = TRUE
     ,collapsible = TRUE
@@ -230,17 +276,18 @@ frow7 <-fluidRow(
   box(
     title = "Highest Rating"
     ,status = "primary"
+    ,width= "100%"
     ,solidHeader = TRUE
     ,collapsible = TRUE
     ,plotlyOutput("HighReview", height = "300px")
   )
-  ,box(
-    title = "Review vs Tag"
-    ,status = "primary"
-    ,solidHeader = TRUE
-    ,collapsible = TRUE
-    ,plotlyOutput("ReviewvsTag", height = "300px")
-  )
+  # ,box(
+  #   title = "Review vs Tag"
+  #   ,status = "primary"
+  #   ,solidHeader = TRUE
+  #   ,collapsible = TRUE
+  #   ,plotlyOutput("ReviewvsTag", height = "300px")
+  # )
 
 )
 
@@ -252,11 +299,11 @@ frow8 <-fluidRow(
     ,collapsible = TRUE
     ,plotlyOutput("TagsvsCount", height = "300px")
   ),box(
-    title = "Difficulty level vs Rating"
+    title = "WordCloud"
     ,status = "primary"
     ,solidHeader = TRUE
     ,collapsible = TRUE
-    ,plotlyOutput("DiffvsRating", height = "300px")
+    ,wordcloud2Output("wordcloud",height = "300px")
   )
 
   
@@ -302,8 +349,6 @@ frow10 <- fluidRow(
 
 
 
-
-
 body <- dashboardBody(
   tabItems(
     tabItem(tabName = "dashboard",
@@ -329,7 +374,6 @@ ui <- dashboardPage(title = 'This is my Page title', header, sidebar, body, skin
 
 # create the server functions for the dashboard  
 server <- function(input, output) { 
-  
   
   
   #creating the plotOutput content
@@ -492,30 +536,45 @@ server <- function(input, output) {
     fig
     
   })
+  
+  
   output$HighCountDiff <- renderPlotly({
     
-    sort<-coursera[order(coursera$Rating,decreasing = TRUE),]
+    # sort<-coursera[order(coursera$Rating,decreasing = TRUE),]
+    # 
+    # remove_none<- filter(sort,(sort$Rating %in% c('None'))==FALSE)
+    # remove_none<- filter(remove_none,(remove_none$Difficulty.f %in% c('None'))==FALSE)
+    # df1<-remove_none %>% group_by(remove_none$Rating,remove_none$Difficulty.f) %>% summarise(n = n()) %>% arrange(desc(n))
+    # df1
+    # 
+    # sort_rating<-df1[order(df1$`remove_none$Rating`,decreasing = TRUE),]
+    # 
+    # ## scatterplot to find the highest count and difficulty level
+    # 
+    # fig <- plot_ly(df1, x = ~df1$`remove_none$Rating`, y = ~df1$n, text = ~df1$`remove_none$Difficulty.f`, type = 'scatter', mode = 'markers', size = ~df1$n, color = ~df1$`remove_none$Rating`, colors = 'Paired',
+    #                #Choosing the range of the bubbles' sizes:
+    #                sizes = c(10, 50),
+    #                marker = list(opacity = 0.5, sizemode = 'diameter'))
+    # fig <- fig %>% layout(title = 'Difficulty Level vs Count',
+    #                       xaxis = list(title='Rating'),
+    #                       yaxis = list(title='count'),
+    #                       showlegend = FALSE)
+    # 
+    # fig
     
-    remove_none<- filter(sort,(sort$Rating %in% c('None'))==FALSE)
-    remove_none<- filter(remove_none,(remove_none$Difficulty.f %in% c('None'))==FALSE)
-    df1<-remove_none %>% group_by(remove_none$Rating,remove_none$Difficulty.f) %>% summarise(n = n()) %>% arrange(desc(n))
-    df1
+    df5<-coursera%>% group_by(coursera$Rating,coursera$Tags) %>% summarise(n = n()) %>% arrange(desc(n))
+    df6<-head(df5,200)
     
-    sort_rating<-df1[order(df1$`remove_none$Rating`,decreasing = TRUE),]
-    
-    ## scatterplot to find the highest count and difficulty level
-    
-    fig <- plot_ly(df1, x = ~df1$`remove_none$Rating`, y = ~df1$n, text = ~df1$`remove_none$Difficulty.f`, type = 'scatter', mode = 'markers', size = ~df1$n, color = ~df1$`remove_none$Rating`, colors = 'Paired',
+    fig <- plot_ly(df6, x = ~df6$`coursera$Rating`, y = ~df6$n, text = ~df6$`coursera$Tags`, type = 'scatter', mode = 'markers', size = ~df6$n, color = ~df6$`coursera$Rating`, colors = 'Paired',
                    #Choosing the range of the bubbles' sizes:
                    sizes = c(10, 50),
                    marker = list(opacity = 0.5, sizemode = 'diameter'))
-    fig <- fig %>% layout(title = 'Difficulty Level vs Count',
+    fig <- fig %>% layout(
                           xaxis = list(title='Rating'),
                           yaxis = list(title='count'),
                           showlegend = FALSE)
     
     fig
-    
   })
   output$HighReview <- renderPlotly({
     sort<-coursera[order(coursera$Rating,decreasing = TRUE),]
@@ -534,25 +593,25 @@ server <- function(input, output) {
     
   })
   
-  output$ReviewvsTag <- renderPlotly({
-    sort<-coursera[order(coursera$Rating,decreasing = TRUE),]
-    
-    remove_none<- filter(sort,(sort$Rating %in% c('None'))==FALSE)
-    remove_none<- filter(remove_none,(remove_none$Difficulty.f %in% c('None'))==FALSE)
-    df1<-remove_none %>% group_by(remove_none$Rating,remove_none$Difficulty.f) %>% summarise(n = n()) %>% arrange(desc(n))
-    df1
-    df3<-remove_none
-    df4<-df3 %>% group_by(df3$Rating,df3$Tags,df3$Difficulty.f) %>% summarise(n = n()) %>% arrange(desc(n))
-    df4
-    df5<-head(df4,100)
-    fig <- plot_ly(df5, labels = ~df5$`df3$Tags`, values = ~df5$n, type = 'pie')
-    fig <- fig %>% layout(
-      xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
-      yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
-    
-    fig
-    
-  })
+  # output$ReviewvsTag <- renderPlotly({
+  #   sort<-coursera[order(coursera$Rating,decreasing = TRUE),]
+  #   
+  #   remove_none<- filter(sort,(sort$Rating %in% c('None'))==FALSE)
+  #   remove_none<- filter(remove_none,(remove_none$Difficulty.f %in% c('None'))==FALSE)
+  #   df1<-remove_none %>% group_by(remove_none$Rating,remove_none$Difficulty.f) %>% summarise(n = n()) %>% arrange(desc(n))
+  #   df1
+  #   df3<-remove_none
+  #   df4<-df3 %>% group_by(df3$Rating,df3$Tags,df3$Difficulty.f) %>% summarise(n = n()) %>% arrange(desc(n))
+  #   df4
+  #   df5<-head(df4,100)
+  #   fig <- plot_ly(df5, labels = ~df5$`df3$Tags`, values = ~df5$n, type = 'pie')
+  #   fig <- fig %>% layout(
+  #     xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+  #     yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+  #   
+  #   fig
+  #   
+  # })
   
   output$TagsvsCount <- renderPlotly({
     sort<-coursera[order(coursera$Rating,decreasing = TRUE),]
@@ -607,7 +666,10 @@ server <- function(input, output) {
 
   output$cRecommendationTable<-renderTable(recommender_title(input$courseraCourseTitle,recommendation_coursera_title,recommendation_coursera_title_docList,recommendation_coursera_title_docList.length))
                                                                                     
-                                           
+  output$wordcloud<-renderWordcloud2({
+    wordcloud2(wordcloud.df, color = "random-light", backgroundColor="white")
+    
+  })
 
 }
 
