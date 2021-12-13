@@ -13,8 +13,10 @@ library(lsa) #for Cosine Simlarity
 library(itertools)
 library(tidytext)
 library(wordcloud2)
+library(recommenderlab)
+
 # library(dplyr)
-figPath = system.file("/Users/narendraomprakash/Downloads/png-clipart-united-states-coursera-massive-open-online-course-education-united-states-blue-text1637609115.mask",package = "wordcloud2")
+#figPath = system.file("/Users/narendraomprakash/Downloads/png-clipart-united-states-coursera-massive-open-online-course-education-united-states-blue-text1637609115.mask",package = "wordcloud2")
 
 udemy <- read.csv('/Users/narendraomprakash/Desktop/Narendra/Semester-V-FALL2021/Data Visualization/J-Component/udemy_visualisation.csv')
 
@@ -39,7 +41,7 @@ recommendation_coursera_title <- recommendation_coursera %>%
 recommendation_coursera_title_docList<-as.list(recommendation_coursera_title$course_title)
 recommendation_coursera_title_docList.length<-length(recommendation_coursera_title_docList)
 
-
+recommendation_udemy_subscribers<-recommendation_udemy
 #Recommender function based on title
 recommender_title<-function(query,retrievingdf,y,y.length){
 
@@ -348,7 +350,6 @@ frow10 <- fluidRow(
 
 
 
-
 body <- dashboardBody(
   tabItems(
     tabItem(tabName = "dashboard",
@@ -531,7 +532,12 @@ server <- function(input, output) {
   #coursera plots
   output$DiffvsCount <- renderPlotly({
     fig <- plot_ly()
-    fig <- fig %>% add_pie(data = count(coursera, Difficulty.f), labels = ~Difficulty.f, values = ~n,
+    sort<-coursera[order(coursera$Rating,decreasing = TRUE),]
+    
+    remove_none<- filter(sort,(sort$Rating %in% c('None'))==FALSE)
+    remove_none<- filter(remove_none,(remove_none$Difficulty.f %in% c('None'))==FALSE)
+    
+    fig <- fig %>% add_pie(data = count(remove_none, Difficulty.f), labels = ~Difficulty.f, values = ~n,
                            name = "Difficulty.f")
     fig
     
